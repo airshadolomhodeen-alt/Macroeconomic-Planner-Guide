@@ -8,6 +8,7 @@ from utils.theme import apply_custom_css, set_plotly_theme
 from utils.data_loader import (
     generate_mock_openstat_data,
     load_open_customs_data,
+    execute_openstat_api_query,
     parse_uploaded_csv,
     OPENSTAT_SCHEMAS
 )
@@ -23,17 +24,13 @@ st.sidebar.markdown("### 🇵🇭 Macro Planner")
 st.sidebar.caption("Power BI Decision Workspace")
 
 data_source = st.sidebar.radio(
-    "Select Engine Data Source:",
-    ["PSA OpenSTAT Series", "BetterGov PH Customs Data (Hugging Face)", "Custom CSV Import"]
+    "SELECT ENGINE DATA SOURCE:",
+    ["PSA OPENSTAT SERIES", "BETTERGOV PH CUSTOMS DATA (HUGGING FACE)", "CUSTOM CSV IMPORT"]
 )
 
 uploaded_df = None
-if data_source == "Custom CSV Import":
-    file_upload = st.sidebar.file_uploader(
-        "Upload CSV Data",
-        type=["csv"],
-        help="Upload datasets structured with standard macro series headers."
-    )
+if data_source == "CUSTOM CSV IMPORT":
+    file_upload = st.sidebar.file_uploader("Upload CSV Data", type=["csv"])
     if file_upload:
         parsed_data, err = parse_uploaded_csv(file_upload)
         if err:
@@ -42,197 +39,130 @@ if data_source == "Custom CSV Import":
             uploaded_df = parsed_data
             st.sidebar.success("CSV Loaded Successfully!")
 
-# Load Active Dataset Pipeline
-if data_source == "BetterGov PH Customs Data (Hugging Face)":
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🎛️ Dynamic Filters")
+
+selected_table = "5. GDP by Industry"
+selected_item = "..Gross Domestic Product"
+
+if data_source == "PSA OPENSTAT SERIES":
+    selected_table = st.sidebar.selectbox("OPENSTAT TABLE ENDPOINT:", list(OPENSTAT_SCHEMAS.keys()))
+    cfg = OPENSTAT_SCHEMAS[selected_table]
+    selected_item = st.sidebar.selectbox("INDICATOR SUB-CATEGORY:", cfg["items"])
+
+valuation_type = st.sidebar.selectbox("VALUATION SERIES", ["At Constant 2018 Prices", "At Current Prices"])
+frequency = st.sidebar.selectbox("REPORT FREQUENCY", ["Annual Aggregated", "Quarterly"])
+
+# Active Engine Router
+if data_source == "PSA OPENSTAT SERIES":
+    with st.spinner(f"Querying OpenSTAT API ({selected_table})..."):
+        raw_df = execute_openstat_api_query(selected_table, selected_item, valuation_type)
+elif data_source == "BETTERGOV PH CUSTOMS DATA (HUGGING FACE)":
     with st.spinner("Streaming Parquet dataset via DuckDB HTTPFS..."):
         raw_df = load_open_customs_data()
-elif data_source == "Custom CSV Import" and uploaded_df is not None:
+elif data_source == "CUSTOM CSV IMPORT" and uploaded_df is not None:
     raw_df = uploaded_df
 else:
     raw_df = generate_mock_openstat_data()
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🎛️ Dynamic Filters")
+year_min = int(raw_df["Year"].min())
+year_max = int(raw_df["Year"].max())
+year_range = st.sidebar.slider("YEAR RANGE SCOPE", min_value=year_min, max_value=year_max, value=(2012, year_max))
 
-if data_source == "PSA OpenSTAT Series":
-    selected_table = st.sidebar.selectbox("OpenSTAT Table Endpoint:", list(OPENSTAT_SCHEMAS.keys()))
-    cfg = OPENSTAT_SCHEMAS[selected_table]
-    selected_item = st.sidebar.selectbox("Indicator Sub-category:", cfg["items"])
+# Filter Application
+filtered_df = raw_df[(raw_df["Year"] >= year_range[0]) & (raw_df["Year"] <= year_range[1])].copy()
 
-year_range = st.sidebar.slider(
-    "Year Range Scope",
-    min_value=int(raw_df["Year"].min()),
-    max_value=int(raw_df["Year"].max()),
-    value=(int(raw_df["Year"].min()), int(raw_df["Year"].max()))
-)
-
-frequency = st.sidebar.selectbox(
-    "Report Frequency",
-    ["Quarterly", "Annual Aggregated"]
-)
-
-valuation_type = st.sidebar.selectbox(
-    "Valuation Series",
-    ["At Constant 2018 Prices", "At Current Prices"]
-)
-
-# Apply Dataset Filtering
-filtered_df = raw_df[
-    (raw_df["Year"] >= year_range[0]) &
-    (raw_df["Year"] <= year_range[1]) &
-    (raw_df["Valuation"] == valuation_type)
-].copy()
+if "Valuation" in filtered_df.columns:
+    filtered_df = filtered_df[filtered_df["Valuation"] == valuation_type]
 
 if frequency == "Annual Aggregated":
-    group_cols = ["Year", "Valuation"]
-    agg_dict = {
-        "GDP_Growth": "mean",
-        "Inflation_Rate": "mean",
-        "Policy_Rate": "mean",
-        "Per_Capita_GDP": "mean",
-        "Household_Consumption": "sum",
-        "Gov_Spending": "sum",
-        "Capital_Formation": "sum",
-        "Exports": "sum",
-        "Imports": "sum",
-        "Agriculture": "sum",
-        "Industry": "sum",
-        "Services": "sum",
-        "Net_Primary_Income": "sum"
-    }
-    view_df = filtered_df.groupby(group_cols).agg(agg_dict).reset_index()
+    numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns.tolist()
+    agg_dict = {col: "mean" if "Rate" in col or "Growth" in col else "sum" for col in numeric_cols if col != "Year"}
+    view_df = filtered_df.groupby("Year").agg(agg_dict).reset_index()
     view_df["Time_Index"] = view_df["Year"].astype(str)
 else:
     view_df = filtered_df.copy()
-    view_df["Time_Index"] = view_df["Year"].astype(str) + " " + view_df["Period"]
+    view_df["Time_Index"] = view_df["Year"].astype(str) + " " + view_df.get("Period", "Q1")
 
-view_df = view_df.sort_values(by=["Year"] + ([] if frequency == "Annual Aggregated" else ["Period"]))
+view_df = view_df.sort_values(by="Year")
 
-# Sidebar Reference Links
+# Sidebar Data Portals
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🌐 Data Portals")
 st.sidebar.markdown("[📊 PSA OpenSTAT](https://openstat.psa.gov.ph/)")
-st.sidebar.markdown("[🇵🇭 BetterGov PH Data](https://data.bettergov.ph/)")
+st.sidebar.markdown("[🇵🇭 PH BetterGov PH Data](https://data.bettergov.ph/)")
 st.sidebar.markdown("[🤗 Hugging Face Dataset](https://huggingface.co/datasets/bettergovph/open-customs-data)")
 
 # ==========================================
-# 2. Main Dashboard Header
+# 2. Main Dashboard Header & KPI Grid
 # ==========================================
 header_col1, header_col2 = st.columns([3, 1])
 with header_col1:
     st.markdown('<div class="header-title">Philippine Macroeconomic & Trade Planner</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="header-subtitle">Active Engine Source: <b>{data_source}</b></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="header-subtitle">Active Engine Source: <b>{data_source}</b> | Target: <b>{selected_item}</b></div>', unsafe_allow_html=True)
 with header_col2:
     st.markdown(f'<div style="text-align: right; padding-top: 10px;"><span class="timestamp-badge">Updated: {datetime.now().strftime("%Y-%m-%d %H:%M")}</span></div>', unsafe_allow_html=True)
 
-# ==========================================
-# 3. Top KPI Scorecards (Power BI Grid)
-# ==========================================
 if len(view_df) >= 2:
     curr = view_df.iloc[-1]
     prev = view_df.iloc[-2]
-    
-    gdp_delta = np.round(curr["GDP_Growth"] - prev["GDP_Growth"], 2)
-    inf_delta = np.round(curr["Inflation_Rate"] - prev["Inflation_Rate"], 2)
-    pol_delta = np.round(curr["Policy_Rate"] - prev["Policy_Rate"], 2)
-    cap_delta = np.round(((curr["Per_Capita_GDP"] - prev["Per_Capita_GDP"]) / (prev["Per_Capita_GDP"] if prev["Per_Capita_GDP"] != 0 else 1)) * 100, 2)
+    gdp_delta = np.round(curr.get("GDP_Growth", 0) - prev.get("GDP_Growth", 0), 2)
+    inf_delta = np.round(curr.get("Inflation_Rate", 0) - prev.get("Inflation_Rate", 0), 2)
+    pol_delta = np.round(curr.get("Policy_Rate", 0) - prev.get("Policy_Rate", 0), 2)
+    cap_delta = np.round(((curr.get("Per_Capita_GDP", 1) - prev.get("Per_Capita_GDP", 1)) / max(prev.get("Per_Capita_GDP", 1), 1)) * 100, 2)
 else:
     curr = view_df.iloc[-1] if len(view_df) > 0 else {}
     gdp_delta, inf_delta, pol_delta, cap_delta = 0, 0, 0, 0
 
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-if data_source == "BetterGov PH Customs Data (Hugging Face)":
-    kpi1.metric("Import Landed Cost", f"₱{curr.get('Household_Consumption', 0):,.2f}B")
-    kpi2.metric("Duty Paid", f"₱{curr.get('Gov_Spending', 0):,.2f}B")
-    kpi3.metric("VAT Paid", f"₱{curr.get('Capital_Formation', 0):,.2f}B")
-    kpi4.metric("Total Transactions", f"{int(curr.get('Net_Primary_Income', 0)):,}")
-else:
-    kpi1.metric("Latest GDP Growth", f"{curr.get('GDP_Growth', 0):.1f}%", f"{gdp_delta:+.2f}% vs prev")
-    kpi2.metric("Inflation Rate", f"{curr.get('Inflation_Rate', 0):.1f}%", f"{inf_delta:+.2f}% vs prev", delta_color="inverse")
-    kpi3.metric("BSP Policy Rate", f"{curr.get('Policy_Rate', 0):.2f}%", f"{pol_delta:+.2f}% vs prev", delta_color="inverse")
-    kpi4.metric("Per Capita GDP", f"₱{curr.get('Per_Capita_GDP', 0):,.0f}", f"{cap_delta:+.2f}% vs prev")
+kpi1.metric("LATEST GDP GROWTH", f"{curr.get('GDP_Growth', 0):.1f}%", f"{gdp_delta:+.2f}% vs prev")
+kpi2.metric("INFLATION RATE", f"{curr.get('Inflation_Rate', 0):.1f}%", f"{inf_delta:+.2f}% vs prev", delta_color="inverse")
+kpi3.metric("BSP POLICY RATE", f"{curr.get('Policy_Rate', 0):.2f}%", f"{pol_delta:+.2f}% vs prev", delta_color="inverse")
+kpi4.metric("PER CAPITA GDP", f"₱{curr.get('Per_Capita_GDP', 0):,.0f}", f"{cap_delta:+.2f}% vs prev")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ==========================================
-# 4. Interactive Visual Analytics Workspace
+# 3. Dynamic Visualizations
 # ==========================================
 tab1, tab2, tab3 = st.tabs(["📈 Historical Trends", "📊 Sectoral & Expenditure Shares", "🔄 Macro Correlations"])
 
 with tab1:
-    st.markdown("**Historical Trajectory & Indicators**")
-    fig_trends = px.line(
-        view_df,
-        x="Time_Index",
-        y=["GDP_Growth", "Inflation_Rate", "Policy_Rate"] if data_source != "BetterGov PH Customs Data (Hugging Face)" else ["Household_Consumption", "Gov_Spending", "Capital_Formation"],
-        labels={"value": "Metrics", "Time_Index": "Timeline Period", "variable": "Indicator"},
-        markers=True
-    )
-    fig_trends.update_layout(height=420, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    st.markdown(f"**Historical Trajectory: {selected_item}**")
+    y_cols = ["Selected_Value"] if "Selected_Value" in view_df.columns else ["GDP_Growth", "Inflation_Rate"]
+    fig_trends = px.line(view_df, x="Time_Index", y=y_cols, markers=True, labels={"Time_Index": "Timeline Period", "value": "Value"})
+    fig_trends.update_layout(height=420)
     st.plotly_chart(fig_trends, use_container_width=True)
 
 with tab2:
     col_sec1, col_sec2 = st.columns(2)
     with col_sec1:
         st.markdown("**Gross Value Added by Industry (Billion ₱)**")
-        fig_industry = px.bar(
-            view_df,
-            x="Time_Index",
-            y=["Agriculture", "Industry", "Services"],
-            labels={"value": "Billion PHP", "Time_Index": "Timeline Period", "variable": "Sector"},
-            barmode="stack"
-        )
-        fig_industry.update_layout(height=400, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+        fig_industry = px.bar(view_df, x="Time_Index", y=["Agriculture", "Industry", "Services"], barmode="stack")
+        fig_industry.update_layout(height=400)
         st.plotly_chart(fig_industry, use_container_width=True)
 
     with col_sec2:
         st.markdown("**Expenditure / Trade Breakdown (Billion ₱)**")
-        fig_expenditure = px.bar(
-            view_df,
-            x="Time_Index",
-            y=["Household_Consumption", "Gov_Spending", "Capital_Formation", "Exports"],
-            labels={"value": "Billion PHP", "Time_Index": "Timeline Period", "variable": "Component"},
-            barmode="group"
-        )
-        fig_expenditure.update_layout(height=400, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+        fig_expenditure = px.bar(view_df, x="Time_Index", y=["Household_Consumption", "Gov_Spending", "Capital_Formation", "Exports"], barmode="group")
+        fig_expenditure.update_layout(height=400)
         st.plotly_chart(fig_expenditure, use_container_width=True)
 
 with tab3:
     st.markdown("**Macroeconomic Correlation Engine**")
-    fig_corr = px.scatter(
-        view_df,
-        x="Inflation_Rate",
-        y="Policy_Rate",
-        size="Per_Capita_GDP",
-        color="GDP_Growth",
-        hover_name="Time_Index",
-        trendline="ols",
-        labels={
-            "Inflation_Rate": "Inflation Rate (%)",
-            "Policy_Rate": "BSP Policy Rate (%)",
-            "GDP_Growth": "GDP Growth (%)",
-            "Per_Capita_GDP": "Per Capita GDP"
-        },
-        color_continuous_scale="Blues"
-    )
+    fig_corr = px.scatter(view_df, x="Inflation_Rate", y="Policy_Rate", size="Per_Capita_GDP", color="GDP_Growth", trendline="ols")
     fig_corr.update_layout(height=420)
     st.plotly_chart(fig_corr, use_container_width=True)
 
 # ==========================================
-# 5. Filtered Data Explorer
+# 4. Filtered Data Explorer
 # ==========================================
 st.markdown("---")
 with st.expander("🔍 Tabular Data Explorer & Export Engine", expanded=False):
-    available_cols = [c for c in view_df.columns if c not in ["Valuation", "Time_Index"]]
-    selected_cols = st.multiselect("Select Display Columns:", available_cols, default=available_cols[:6])
-    
-    display_df = view_df[selected_cols] if selected_cols else view_df
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
-    
-    csv_bytes = display_df.to_csv(index=False).encode("utf-8")
+    st.dataframe(view_df, use_container_width=True, hide_index=True)
     st.download_button(
         label="📥 Export Filtered Dataset (CSV)",
-        data=csv_bytes,
-        file_name=f"macro_trade_planner_export_{datetime.now().strftime('%Y%m%d')}.csv",
+        data=view_df.to_csv(index=False).encode("utf-8"),
+        file_name=f"openstat_export_{datetime.now().strftime('%Y%m%d')}.csv",
         mime="text/csv"
     )
