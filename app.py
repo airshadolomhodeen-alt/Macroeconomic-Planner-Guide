@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as np_px
+import plotly.express as px
 import numpy as np
-from datetime import datetime
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
@@ -115,7 +114,7 @@ selected_metric = st.sidebar.selectbox(
 st.sidebar.markdown("---")
 st.sidebar.info(
     "**Data Sources:**\n"
-    "- PSA OpenSTAT[cite: 1]\n"
+    "- PSA OpenSTAT\n"
     "- BSP Policy Rates\n"
     "- DBM Budget Allocations\n"
     "- BetterGov & OECD Benchmarks"
@@ -157,7 +156,7 @@ with kpi2:
         label="Headline Inflation Rate",
         value=f"{latest_inflation:.2f}%",
         delta=f"{latest_inflation - prev_inflation:.2f}%",
-        delta_inverse=True
+        delta_color="inverse"
     )
 
 with kpi3:
@@ -186,7 +185,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
 
 with tab1:
     st.subheader(f"Historical Trend Analysis: {selected_metric.replace('_', ' ')}")
-    fig_line = np_px.line(
+    fig_line = px.line(
         df_macro,
         x="Year",
         y=selected_metric,
@@ -202,7 +201,7 @@ with tab2:
     col_a, col_b = st.columns(2)
     
     with col_a:
-        fig_bar_share = np_px.bar(
+        fig_bar_share = px.bar(
             df_sectors,
             x="Year",
             y="GDP_Share_Pct",
@@ -214,7 +213,7 @@ with tab2:
         st.plotly_chart(fig_bar_share, use_container_width=True)
         
     with col_b:
-        fig_bar_budget = np_px.bar(
+        fig_bar_budget = px.bar(
             df_sectors,
             x="Year",
             y="Budget_Allocation_Billion_PHP",
@@ -227,7 +226,7 @@ with tab2:
 
 with tab3:
     st.subheader("Economic Metric Correlation: Inflation vs. Interest Rates")
-    fig_scatter = np_px.scatter(
+    fig_scatter = px.scatter(
         df_macro,
         x="Inflation_Rate",
         y="Interest_Rate",
