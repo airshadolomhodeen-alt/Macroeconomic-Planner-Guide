@@ -97,8 +97,17 @@ selected_metrics = st.sidebar.multiselect(
     default=["GDP Growth (%)", "Inflation Rate (%)"]
 )
 
+# 4. Clean Data Source Links
 st.sidebar.markdown("---")
-st.sidebar.info("Data Sources Context: PSA, BSP, DBM, Open Data PH.")
+st.sidebar.subheader("🔗 Data Sources")
+st.sidebar.markdown("""
+* [PSA OpenSTAT](https://openstat.psa.gov.ph/)
+* [Bangko Sentral ng Pilipinas](https://www.bsp.gov.ph/SitePages/Statistics/Statistics.aspx)
+* [Department of Budget & Management](https://www.dbm.gov.ph/)
+* [Open Data Philippines](https://data.gov.ph/) | [BetterGov](https://data.bettergov.ph/)
+* [PSSC Open Data](https://data.pssc.org.ph/docs/open-data-philippines/)
+* [Data Engineering PH](https://dataengineering.ph/datasets.html)
+* [OECD Data](https://www.oecd.org/en/search.html)
 
 # ==========================================
 # Data Filtering
@@ -207,8 +216,7 @@ if not filtered_macro.empty and "Inflation Rate (%)" in filtered_macro.columns a
         color="GDP Growth (%)",
         hover_name="Year",
         title="Bubble Size = Gov Spending | Color = GDP Growth",
-        template="plotly_white",
-        trendline="ols" # Requires statsmodels, omitted for base streamlit unless installed
+        template="plotly_white"
     )
     st.plotly_chart(fig_scatter, use_container_width=True)
 else:
