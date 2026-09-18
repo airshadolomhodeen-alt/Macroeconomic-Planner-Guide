@@ -4,3 +4,4 @@ numpy
 plotly
 duckdb
 pyarrow
+requests
