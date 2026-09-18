@@ -1,14 +1,12 @@
 import streamlit as st
-import plotly.io as pio
 
 POWER_BI_COLORS = ["#005B94", "#00A896", "#F59E0B", "#EF4444", "#10B981", "#6366F1", "#8B5CF6", "#64748B"]
 
 def apply_power_bi_theme():
-    """Injects custom CSS to remove Streamlit container margins and replicate a Power BI executive canvas."""
+    """Injects custom CSS to enforce a full-width Power BI layout without padding."""
     st.markdown(
         """
         <style>
-            /* Force 100% Canvas Width & Tight Margins */
             .block-container {
                 padding: 1rem 1.5rem !important;
                 max-width: 100% !important;
@@ -16,8 +14,6 @@ def apply_power_bi_theme():
             .stApp {
                 background-color: #F8FAFC;
             }
-            
-            /* Sidebar Styling */
             [data-testid="stSidebar"] {
                 background-color: #0F172A !important;
                 border-right: 1px solid #1E293B;
@@ -25,17 +21,6 @@ def apply_power_bi_theme():
             [data-testid="stSidebar"] * {
                 color: #E2E8F0 !important;
             }
-            [data-testid="stSidebar"] .stSelectbox label,
-            [data-testid="stSidebar"] .stSlider label,
-            [data-testid="stSidebar"] .stMultiSelect label {
-                color: #94A3B8 !important;
-                font-weight: 600;
-                font-size: 0.8rem;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
-
-            /* Power BI Card Container Styling */
             .pbi-card {
                 background-color: #FFFFFF;
                 border: 1px solid #E2E8F0;
@@ -44,8 +29,6 @@ def apply_power_bi_theme():
                 box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
                 margin-bottom: 12px;
             }
-            
-            /* KPI Metric Cards */
             .kpi-card {
                 background-color: #FFFFFF;
                 border: 1px solid #CBD5E1;
@@ -68,34 +51,10 @@ def apply_power_bi_theme():
                 font-weight: 800;
                 line-height: 1.2;
             }
-            .kpi-delta-pos {
-                color: #10B981;
+            .kpi-sub {
+                color: #64748B;
                 font-size: 0.8rem;
-                font-weight: 600;
-            }
-            .kpi-delta-neg {
-                color: #EF4444;
-                font-size: 0.8rem;
-                font-weight: 600;
-            }
-
-            /* Status Badge */
-            .status-badge-live {
-                background-color: #DCFCE7;
-                color: #166534;
-                font-size: 0.75rem;
-                padding: 4px 10px;
-                border-radius: 12px;
-                font-weight: 600;
-                border: 1px solid #86EFAC;
-            }
-            .status-badge-sync {
-                background-color: #E0F2FE;
-                color: #0369A1;
-                font-size: 0.75rem;
-                padding: 4px 10px;
-                border-radius: 12px;
-                font-weight: 600;
+                font-weight: 500;
             }
         </style>
         """,
@@ -103,7 +62,7 @@ def apply_power_bi_theme():
     )
 
 def configure_plotly_chart(fig, height=480):
-    """Standardizes Plotly charts to fit Power BI full-width containers responsively."""
+    """Formats Plotly charts to match Power BI card styling with transparent backgrounds."""
     fig.update_layout(
         autosize=True,
         height=height,
