@@ -1,73 +1,97 @@
 import streamlit as st
 import plotly.io as pio
 
-POWER_BI_COLORS = [
-    "#005B94",  # Power BI Primary Blue
-    "#00A896",  # Teal Accent
-    "#F59E0B",  # Amber Accent
-    "#EF4444",  # Red Delta / Outflow
-    "#10B981",  # Green Delta / Growth
-    "#6366F1",  # Indigo Accent
-    "#8B5CF6",  # Purple Accent
-    "#64748B"   # Muted Slate
-]
+POWER_BI_COLORS = ["#005B94", "#00A896", "#F59E0B", "#EF4444", "#10B981", "#6366F1", "#8B5CF6", "#64748B"]
 
-def apply_custom_css() -> None:
-    """Injects custom CSS to replicate Power BI executive dashboard styling."""
+def apply_power_bi_theme():
+    """Injects custom CSS to remove Streamlit container margins and replicate a Power BI executive canvas."""
     st.markdown(
         """
         <style>
-            .stApp {
-                background-color: #F8F9FA;
+            /* Force 100% Canvas Width & Tight Margins */
+            .block-container {
+                padding: 1rem 1.5rem !important;
+                max-width: 100% !important;
             }
+            .stApp {
+                background-color: #F8FAFC;
+            }
+            
+            /* Sidebar Styling */
             [data-testid="stSidebar"] {
                 background-color: #0F172A !important;
+                border-right: 1px solid #1E293B;
             }
             [data-testid="stSidebar"] * {
                 color: #E2E8F0 !important;
             }
             [data-testid="stSidebar"] .stSelectbox label,
             [data-testid="stSidebar"] .stSlider label,
-            [data-testid="stSidebar"] .stRadio label {
+            [data-testid="stSidebar"] .stMultiSelect label {
                 color: #94A3B8 !important;
                 font-weight: 600;
-                font-size: 0.85rem;
+                font-size: 0.8rem;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
-            div[data-testid="stMetric"] {
+
+            /* Power BI Card Container Styling */
+            .pbi-card {
                 background-color: #FFFFFF;
                 border: 1px solid #E2E8F0;
                 border-radius: 8px;
-                padding: 16px 20px;
-                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+                padding: 16px;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+                margin-bottom: 12px;
             }
-            div[data-testid="stMetric"] label {
-                color: #64748B !important;
-                font-size: 0.825rem !important;
-                font-weight: 700 !important;
+            
+            /* KPI Metric Cards */
+            .kpi-card {
+                background-color: #FFFFFF;
+                border: 1px solid #CBD5E1;
+                border-left: 5px solid #005B94;
+                border-radius: 8px;
+                padding: 14px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            }
+            .kpi-title {
+                color: #64748B;
+                font-size: 0.75rem;
+                font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
-            }
-            div[data-testid="stMetricValue"] {
-                color: #0F172A !important;
-                font-size: 1.75rem !important;
-                font-weight: 800 !important;
-            }
-            .header-title {
-                font-size: 1.85rem;
-                font-weight: 800;
-                color: #0F172A;
                 margin-bottom: 4px;
             }
-            .header-subtitle {
-                font-size: 0.925rem;
-                color: #64748B;
-                margin-bottom: 16px;
+            .kpi-value {
+                color: #0F172A;
+                font-size: 1.65rem;
+                font-weight: 800;
+                line-height: 1.2;
             }
-            .timestamp-badge {
-                background-color: #E2E8F0;
-                color: #334155;
+            .kpi-delta-pos {
+                color: #10B981;
+                font-size: 0.8rem;
+                font-weight: 600;
+            }
+            .kpi-delta-neg {
+                color: #EF4444;
+                font-size: 0.8rem;
+                font-weight: 600;
+            }
+
+            /* Status Badge */
+            .status-badge-live {
+                background-color: #DCFCE7;
+                color: #166534;
+                font-size: 0.75rem;
+                padding: 4px 10px;
+                border-radius: 12px;
+                font-weight: 600;
+                border: 1px solid #86EFAC;
+            }
+            .status-badge-sync {
+                background-color: #E0F2FE;
+                color: #0369A1;
                 font-size: 0.75rem;
                 padding: 4px 10px;
                 border-radius: 12px;
@@ -78,16 +102,18 @@ def apply_custom_css() -> None:
         unsafe_allow_html=True
     )
 
-def set_plotly_theme() -> None:
-    """Configures a global Plotly template aligned with Power BI color palettes."""
-    template = pio.templates["plotly_white"]
-    template.layout.colorway = POWER_BI_COLORS
-    template.layout.font.family = "Segoe UI, -apple-system, BlinkMacSystemFont, Roboto, sans-serif"
-    template.layout.title.font.color = "#0F172A"
-    template.layout.title.font.size = 16
-    template.layout.paper_bgcolor = "rgba(0,0,0,0)"
-    template.layout.plot_bgcolor = "rgba(0,0,0,0)"
-    template.layout.xaxis.gridcolor = "#E2E8F0"
-    template.layout.yaxis.gridcolor = "#E2E8F0"
-    pio.templates["power_bi"] = template
-    pio.templates.default = "power_bi"
+def configure_plotly_chart(fig, height=480):
+    """Standardizes Plotly charts to fit Power BI full-width containers responsively."""
+    fig.update_layout(
+        autosize=True,
+        height=height,
+        margin=dict(l=15, r=15, t=40, b=15),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Segoe UI, sans-serif", size=12, color="#334155"),
+        colorway=POWER_BI_COLORS,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis=dict(gridcolor="#E2E8F0", showline=True, linecolor="#CBD5E1"),
+        yaxis=dict(gridcolor="#E2E8F0", showline=True, linecolor="#CBD5E1")
+    )
+    return fig
