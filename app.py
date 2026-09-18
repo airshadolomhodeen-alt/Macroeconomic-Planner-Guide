@@ -25,7 +25,6 @@ def load_mock_data():
     years = np.arange(2010, 2025)
     
     # Simulate Philippine Macroeconomic indicators
-    # Base trends with some random noise to simulate real-world economic cycles
     gdp_growth = np.random.normal(loc=6.0, scale=1.5, size=len(years))
     gdp_growth[10] = -9.5 # 2020 COVID dip simulation
     
@@ -33,7 +32,6 @@ def load_mock_data():
     inflation_rate[12] = 5.8 # 2022 inflation spike simulation
     
     policy_rate = inflation_rate * 0.8 + np.random.normal(loc=1.0, scale=0.5, size=len(years))
-    
     gov_spending_budget = np.linspace(1500, 5700, len(years)) + np.random.normal(0, 100, len(years))
     
     data = pd.DataFrame({
@@ -108,6 +106,7 @@ st.sidebar.markdown("""
 * [PSSC Open Data](https://data.pssc.org.ph/docs/open-data-philippines/)
 * [Data Engineering PH](https://dataengineering.ph/datasets.html)
 * [OECD Data](https://www.oecd.org/en/search.html)
+""")
 
 # ==========================================
 # Data Filtering
@@ -149,7 +148,6 @@ if not filtered_macro.empty:
                   value=f"{latest_data.get('GDP Growth (%)', 0)}%", 
                   delta=f"{get_delta('GDP Growth (%)')}% YoY" if get_delta('GDP Growth (%)') is not None else None)
     with kpi2:
-        # Inverse delta color for inflation (higher is usually worse)
         st.metric(label=f"Inflation Rate ({latest_year})", 
                   value=f"{latest_data.get('Inflation Rate (%)', 0)}%", 
                   delta=f"{get_delta('Inflation Rate (%)')}% YoY" if get_delta('Inflation Rate (%)') is not None else None,
@@ -169,7 +167,6 @@ else:
 st.markdown("---")
 
 # --- INTERACTIVE VISUALIZATIONS ---
-
 col_left, col_right = st.columns(2)
 
 # 1. Line Chart: Historical Trends
@@ -229,7 +226,6 @@ st.subheader("Raw Data View")
 with st.expander("View and Export Underlying Data", expanded=False):
     st.dataframe(filtered_macro, use_container_width=True)
     
-    # Allow CSV download
     csv = filtered_macro.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="Download Data as CSV",
