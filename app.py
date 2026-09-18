@@ -233,8 +233,7 @@ with tab3:
         size="GDP_Growth_Rate",
         color="Year",
         hover_name="Year",
-        title="Inflation Rate vs Policy Interest Rate (Bubble size = GDP Growth)",
-        trendline="ols"
+        title="Inflation Rate vs Policy Interest Rate (Bubble size = GDP Growth)"
     )
     fig_scatter.update_layout(plot_bgcolor="white", paper_bgcolor="white")
     st.plotly_chart(fig_scatter, use_container_width=True)
