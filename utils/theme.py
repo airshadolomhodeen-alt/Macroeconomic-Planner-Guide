@@ -17,12 +17,9 @@ def apply_custom_css() -> None:
     st.markdown(
         """
         <style>
-            /* Global Canvas Background */
             .stApp {
                 background-color: #F8F9FA;
             }
-            
-            /* Executive Dark Sidebar */
             [data-testid="stSidebar"] {
                 background-color: #0F172A !important;
             }
@@ -38,8 +35,6 @@ def apply_custom_css() -> None:
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
-            
-            /* Metric Scorecard Cards */
             div[data-testid="stMetric"] {
                 background-color: #FFFFFF;
                 border: 1px solid #E2E8F0;
@@ -59,18 +54,6 @@ def apply_custom_css() -> None:
                 font-size: 1.75rem !important;
                 font-weight: 800 !important;
             }
-            
-            /* Card Containers */
-            .pbi-card {
-                background-color: #FFFFFF;
-                border: 1px solid #E2E8F0;
-                border-radius: 8px;
-                padding: 20px;
-                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-                margin-bottom: 20px;
-            }
-            
-            /* Header Elements */
             .header-title {
                 font-size: 1.85rem;
                 font-weight: 800;
